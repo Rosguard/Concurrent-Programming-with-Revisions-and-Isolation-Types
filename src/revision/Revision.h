@@ -24,4 +24,10 @@ class Revision : public std::enable_shared_from_this<Revision> {
 
 	std::shared_ptr<Revision> fork(const std::function<void()> &action);
 	void join(const std::shared_ptr<Revision> &other_revision);
+
+	// getters
+	inline std::shared_ptr<Segment> current() const
+	{
+		return _current;
+	}
 };
