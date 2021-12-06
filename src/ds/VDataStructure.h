@@ -10,7 +10,11 @@ template <class T> class VDataStructure : public Versioned {
     protected:
 	std::unordered_map<int, std::optional<T> > _versions;
 
-	void set(const std::shared_ptr<Revision> &r, T value);
+	void set(const std::shared_ptr<Revision> &r, const T &value);
+	T &get(const std::shared_ptr<Revision> &r);
+
+	void set(const T &value);
+	T &get();
 
     public:
 	void release(const std::shared_ptr<Segment> &release) override;
