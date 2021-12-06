@@ -6,6 +6,7 @@
 
 class Segment {
     private:
+	int _version;
 	std::shared_ptr<Segment> _parent;
 	std::vector<std::shared_ptr<Versioned> > _written;
 
@@ -21,6 +22,11 @@ class Segment {
 	[[nodiscard]] inline std::shared_ptr<Segment> parent() const
 	{
 		return _parent;
+	}
+
+	[[nodiscard]] inline int version() const
+	{
+		return _version;
 	}
 
 	void collapse(const std::shared_ptr<Revision> &main);
