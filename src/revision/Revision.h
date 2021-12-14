@@ -30,4 +30,9 @@ class Revision : public std::enable_shared_from_this<Revision> {
 	{
 		return _current;
 	}
+
+	inline static std::shared_ptr<Revision> thread_revision()
+	{
+		return _current_revision;
+	}
 };

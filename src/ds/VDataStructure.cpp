@@ -17,7 +17,7 @@ void VDataStructure<T>::collapse(const std::shared_ptr<Revision> &main,
 }
 
 template <class T>
-void VDataStructure<T>::set(const std::shared_ptr<Revision> &r, T value)
+void VDataStructure<T>::set(const std::shared_ptr<Revision> &r, const T &value)
 {
 	if (!_versions[r->current()->version()]) {
 		r->current()->written().push_back(shared_from_this());
@@ -40,4 +40,24 @@ void VDataStructure<T>::merge(const std::shared_ptr<Revision> &main,
 	if (s == join) {
 		set(main, _versions[join->version()]);
 	}
+}
+
+template <class T> T &VDataStructure<T>::get(const std::shared_ptr<Revision> &r)
+{
+	auto s = r->current();
+	while (!_versions[s->version()]) {
+		s = s->parent();
+	}
+
+	return _versions[s->version()];
+}
+
+template <class T> void VDataStructure<T>::set(const T &value)
+{
+	set(Revision::thread_revision(), value);
+}
+
+template <class T> T &VDataStructure<T>::get()
+{
+	return get(Revision::thread_revision());
 }
