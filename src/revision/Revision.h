@@ -35,4 +35,9 @@ class Revision : public std::enable_shared_from_this<Revision> {
 	{
 		return _current_revision;
 	}
+
+	inline std::shared_ptr<Segment> root() const
+	{
+		return _root;
+	}
 };
