@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ds/VDataStructure.h"
+#include "VDataStructure.h"
 #include <stack>
 
 template <class T> class VStack : VDataStructure<std::stack<T> > {

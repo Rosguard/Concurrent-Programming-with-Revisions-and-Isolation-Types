@@ -6,7 +6,7 @@
 #include <functional>
 #include <utility>
 
-class Revision : public std::enable_shared_from_this<Revision> {
+class Revision {
     private:
 	std::shared_ptr<Segment> _root;
 	std::shared_ptr<Segment> _current;
@@ -26,18 +26,15 @@ class Revision : public std::enable_shared_from_this<Revision> {
 	void join(const std::shared_ptr<Revision> &other_revision);
 
 	// getters
-	inline std::shared_ptr<Segment> current() const
+	[[nodiscard]] std::shared_ptr<Segment> current() const
 	{
 		return _current;
 	}
 
-	inline static std::shared_ptr<Revision> thread_revision()
-	{
-		return _current_revision;
-	}
-
-	inline std::shared_ptr<Segment> root() const
+	[[nodiscard]] inline std::shared_ptr<Segment> root() const
 	{
 		return _root;
 	}
+
+	static std::shared_ptr<Revision> thread_revision();
 };
