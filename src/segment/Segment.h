@@ -7,22 +7,22 @@
 #include <atomic>
 #include "versioned/Versioned.h"
 #include "revision/Revision.h"
+#include <cassert>
 
-class Segment : public std::enable_shared_from_this<Segment> {
+class Segment {
     private:
 	std::atomic<int> _version{};
 	std::atomic<int> _refcount{};
-	std::atomic<int> _versionCount{};
+	static std::atomic<int> _versionCount;
 
 	std::shared_ptr<Segment> _parent;
-
-	std::vector<std::shared_ptr<Versioned> > _written;
+	std::vector<Versioned *> _written;
 
     public:
-	Segment(const std::shared_ptr<Segment> &parent);
+	explicit Segment(const std::shared_ptr<Segment> &parent);
 
 	// some getters
-	inline std::vector<std::shared_ptr<Versioned> > written()
+	inline std::vector<Versioned *> &written()
 	{
 		return _written;
 	}
@@ -37,9 +37,14 @@ class Segment : public std::enable_shared_from_this<Segment> {
 		return _version;
 	}
 
-	void collapse(const std::shared_ptr<Revision> &main);
+	void collapse(const Revision *main);
 	void release();
 
-	// release
-	~Segment();
+#ifdef DEBUG
+	[[nodiscard]] std::string dump() const
+	{
+		return "(" + std::to_string(version()) + "," +
+		       std::to_string(_refcount) + ")";
+	}
+#endif
 };

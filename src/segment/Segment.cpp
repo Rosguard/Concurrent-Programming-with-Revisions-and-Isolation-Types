@@ -1,25 +1,29 @@
-#include <cassert>
 #include "Segment.h"
 
+std::atomic<int> Segment::_versionCount = 0;
 
-Segment::Segment(const std::shared_ptr<Segment> &parent)
+Segment::Segment(const std::shared_ptr<Segment> &parent) : _parent(parent)
 {
-	this->_parent = parent;
-	_versionCount = 0;
-	if (parent != nullptr) {
+	if (parent) {
 		parent->_refcount++;
 	}
 	_version = _versionCount++;
 	_refcount = 1;
+
+	DEBUG_ONLY("Create Segment: " + dump() +
+		   (parent ? " with parent " + parent->dump() : ""));
 }
 
-void Segment::collapse(const std::shared_ptr<Revision> &main)
+void Segment::collapse(const Revision *main)
 {
-	assert(main->current() == shared_from_this());
-	while (_parent != nullptr && _parent->_refcount == 1) {
+	DEBUG_ONLY("Collapse Segment: " + main->dump());
+
+	assert(main->current().get() == this);
+
+	while (_parent != main->root() && _parent->_refcount == 1) {
 		std::for_each(_parent->_written.begin(),
 			      _parent->_written.end(),
-			      [this, main](std::shared_ptr<Versioned> &ptr) {
+			      [this, main](Versioned *const ptr) {
 				      ptr->collapse(main, _parent);
 			      });
 		_parent = _parent->_parent;
@@ -28,13 +32,17 @@ void Segment::collapse(const std::shared_ptr<Revision> &main)
 
 void Segment::release()
 {
+	DEBUG_ONLY("Release Segment: " + dump());
+
 	if (--_refcount == 0) {
+		DEBUG_ONLY("Full release Segment: " + dump());
+
 		std::for_each(_written.begin(), _written.end(),
-			      [this](std::shared_ptr<Versioned> &ptr) {
-				      ptr->release(shared_from_this());
+			      [this](Versioned *const ptr) {
+				      ptr->release(this);
 			      });
-	}
-	if (_parent != nullptr) {
-		_parent->release();
+		if (_parent) {
+			_parent->release();
+		}
 	}
 }

@@ -6,7 +6,7 @@
 #include <functional>
 #include <utility>
 
-class Revision : public std::enable_shared_from_this<Revision> {
+class Revision {
     private:
 	std::shared_ptr<Segment> _root;
 	std::shared_ptr<Segment> _current;
@@ -16,28 +16,26 @@ class Revision : public std::enable_shared_from_this<Revision> {
 	thread_local static std::shared_ptr<Revision> _current_revision;
 
     public:
-	Revision(std::shared_ptr<Segment> root,
-		 std::shared_ptr<Segment> current)
-		: _root(std::move(root)), _current(std::move(current))
-	{
-	}
+	Revision(const std::shared_ptr<Segment> &root,
+		 const std::shared_ptr<Segment> &current);
 
 	std::shared_ptr<Revision> fork(const std::function<void()> &action);
 	void join(const std::shared_ptr<Revision> &other_revision);
 
 	// getters
-	inline std::shared_ptr<Segment> current() const
+	[[nodiscard]] inline std::shared_ptr<Segment> current() const
 	{
 		return _current;
 	}
 
-	inline static std::shared_ptr<Revision> thread_revision()
-	{
-		return _current_revision;
-	}
-
-	inline std::shared_ptr<Segment> root() const
+	[[nodiscard]] inline std::shared_ptr<Segment> root() const
 	{
 		return _root;
 	}
+
+	static std::shared_ptr<Revision> thread_revision();
+
+#ifdef DEBUG
+	[[nodiscard]] std::string dump() const;
+#endif
 };
