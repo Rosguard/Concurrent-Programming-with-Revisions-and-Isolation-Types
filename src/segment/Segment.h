@@ -41,9 +41,10 @@ class Segment {
 	void release();
 
 #ifdef DEBUG
-	[[nodiscard]] std::string version_to_string() const
+	[[nodiscard]] std::string dump() const
 	{
-		return std::to_string(version());
+		return "(" + std::to_string(version()) + "," +
+		       std::to_string(_refcount) + ")";
 	}
 #endif
 };

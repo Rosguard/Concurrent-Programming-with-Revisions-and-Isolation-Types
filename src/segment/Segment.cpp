@@ -5,17 +5,19 @@ std::atomic<int> Segment::_versionCount = 0;
 Segment::Segment(const std::shared_ptr<Segment> &parent) : _parent(parent)
 {
 	if (parent) {
-		DEBUG_ONLY("Create Segment with parent: " +
-			   _parent->version_to_string());
 		parent->_refcount++;
 	}
 	_version = _versionCount++;
-	DEBUG_ONLY("New Segment version: " + version_to_string());
 	_refcount = 1;
+
+	DEBUG_ONLY("Create Segment: " + dump() +
+		   (parent ? " with parent " + parent->dump() : ""));
 }
 
 void Segment::collapse(const Revision *main)
 {
+	DEBUG_ONLY("Collapse Segment: " + main->dump());
+
 	assert(main->current().get() == this);
 
 	while (_parent != main->root() && _parent->_refcount == 1) {
@@ -30,7 +32,11 @@ void Segment::collapse(const Revision *main)
 
 void Segment::release()
 {
+	DEBUG_ONLY("Release Segment: " + dump());
+
 	if (--_refcount == 0) {
+		DEBUG_ONLY("Full release Segment: " + dump());
+
 		std::for_each(_written.begin(), _written.end(),
 			      [this](Versioned *const ptr) {
 				      ptr->release(this);

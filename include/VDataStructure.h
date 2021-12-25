@@ -25,6 +25,8 @@ template <class T> class VDataStructure : public Versioned {
 	void merge(const Revision *main,
 		   const std::shared_ptr<Revision> &joinRev,
 		   const std::shared_ptr<Segment> &join) override;
+
+	virtual ~VDataStructure();
 };
 
 template <class T> void VDataStructure<T>::release(const Segment *release)
@@ -48,8 +50,9 @@ void VDataStructure<T>::set(const Revision *r, const T &value)
 	DEBUG_ONLY("Set value");
 
 	if (!_versions[r->current()->version()]) {
-		DEBUG_ONLY("Record set to Segment: " +
-			   r->current()->version_to_string());
+		DEBUG_ONLY("Record set to Segment: " + r->current()->dump() +
+			   " at pos: " +
+			   std::to_string(r->current()->written().size()));
 		r->current()->written().push_back(this);
 	}
 	_versions[r->current()->version()] = value;
@@ -68,7 +71,6 @@ void VDataStructure<T>::merge(const Revision *main,
 		s = s->parent();
 	}
 
-	// TODO: possible error.
 	if (s == join) {
 		DEBUG_ONLY("Make merge");
 		set(main, _versions[join->version()].value());
@@ -93,4 +95,13 @@ template <class T> void VDataStructure<T>::set(const T &value)
 template <class T> T &VDataStructure<T>::get()
 {
 	return get(Revision::thread_revision());
+}
+
+template <class T> VDataStructure<T>::~VDataStructure()
+{
+	// delete all references to this data, because we are leaving context
+	auto s = Revision::thread_revision()->current();
+	s->written().erase(std::remove_if(
+		s->written().begin(), s->written().end(),
+		[this](const Versioned *ptr) { return ptr == this; }));
 }

@@ -2,20 +2,28 @@
 
 thread_local std::shared_ptr<Revision> Revision::_current_revision = nullptr;
 
+Revision::Revision(const std::shared_ptr<Segment> &root,
+		   const std::shared_ptr<Segment> &current)
+	: _root(root), _current(current)
+{
+	DEBUG_ONLY("Create Revision: current: " + current->dump() +
+		   (root ? " root " + root->dump() : " nullptr"));
+}
+
 std::shared_ptr<Revision> Revision::fork(const std::function<void()> &action)
 {
-	DEBUG_ONLY("Fork with Segment: " + _current->version_to_string());
+	DEBUG_ONLY("Fork: " + dump());
 
 	auto r = std::make_shared<Revision>(
 		_current, std::make_shared<Segment>(_current));
 
+	_current->release();
 	_current = std::make_shared<Segment>(_current);
 
 	r->_task = std::thread([r, action]() {
-		DEBUG_ONLY("Start new thread!");
-
 		const auto prev_rev = _current_revision;
 		_current_revision = r;
+		DEBUG_ONLY("New thread: " + _current_revision->dump());
 
 		action();
 
@@ -27,6 +35,8 @@ std::shared_ptr<Revision> Revision::fork(const std::function<void()> &action)
 
 void Revision::join(const std::shared_ptr<Revision> &other_revision)
 {
+	DEBUG_ONLY("Join: " + dump() + " with " + other_revision->dump());
+
 	other_revision->_task.join();
 
 	auto s = other_revision->_current;
@@ -49,8 +59,16 @@ std::shared_ptr<Revision> Revision::thread_revision()
 	if (!_current_revision) {
 		const auto root_segment = std::make_shared<Segment>(nullptr);
 		_current_revision =
-			std::make_shared<Revision>(root_segment, root_segment);
+			std::make_shared<Revision>(nullptr, root_segment);
 	}
 
 	return _current_revision;
 }
+
+#ifdef DEBUG
+std::string Revision::dump() const
+{
+	return "Revision:" + (_root ? " root: " + _root->dump() : "") +
+	       " current: " + _current->dump();
+}
+#endif // DEBUG

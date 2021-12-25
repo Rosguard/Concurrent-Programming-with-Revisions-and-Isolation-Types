@@ -3,8 +3,9 @@
 
 TEST(VDataStructureTest, set_get)
 {
-	VDataStructure<int> var;
+	DEBUG_ONLY("\nSTART TEST " + std::string(test_info_->name()));
 
+	VDataStructure<int> var;
 	var.set(1);
 
 	ASSERT_EQ(var.get(), 1);
@@ -12,8 +13,9 @@ TEST(VDataStructureTest, set_get)
 
 TEST(VDataStructureTest, last_set)
 {
-	VDataStructure<int> var;
+	DEBUG_ONLY("\nSTART TEST " + std::string(test_info_->name()));
 
+	VDataStructure<int> var;
 	var.set(1);
 	var.set(2);
 
@@ -22,6 +24,8 @@ TEST(VDataStructureTest, last_set)
 
 TEST(VDataStructureTest, basic_multithread_test)
 {
+	DEBUG_ONLY("\nSTART TEST " + std::string(test_info_->name()));
+
 	VDataStructure<int> var;
 
 	var.set(1);
@@ -64,6 +68,8 @@ TEST(VDataStructureTest, basic_multithread_test)
 
 TEST(VDataStructureTest, perfect_nested_threads)
 {
+	DEBUG_ONLY("\nSTART TEST " + std::string(test_info_->name()));
+
 	VDataStructure<int> var;
 
 	var.set(1);
@@ -94,6 +100,8 @@ TEST(VDataStructureTest, perfect_nested_threads)
 
 TEST(VDataStructureTest, nested_threads)
 {
+	DEBUG_ONLY("\nSTART TEST " + std::string(test_info_->name()));
+
 	VDataStructure<int> var;
 
 	var.set(1);
