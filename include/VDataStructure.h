@@ -104,9 +104,12 @@ template <class T> VDataStructure<T>::~VDataStructure()
 	if (s->written().empty()) {
 		return;
 	}
-	s->written().erase(std::remove_if(
+	auto to_delete = std::remove_if(
 		s->written().begin(), s->written().end(),
-		[this](const Versioned *ptr) { return ptr == this; }));
+		[this](const Versioned *ptr) { return ptr == this; });
+	if (to_delete != s->written().end()) {
+		s->written().erase(to_delete);
+	}
 }
 
 template <class T>
