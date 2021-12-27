@@ -14,5 +14,8 @@ add_library(mvds SHARED src/segment/Segment.cpp src/segment/Segment.h
         include/VDataStructure.h include/VSet.h include/VQueue.h
         include/VStack.h src/versioned/Versioned.h)
 
-add_executable(tests tests/test.cpp)
+add_executable(tests tests/VDataStructureTests.cpp
+        tests/VQueueTests.cpp
+        tests/VStackTests.cpp
+        tests/RunTests.cpp)
 target_link_libraries(tests mvds -lgtest -lgtest_main -lpthread)
