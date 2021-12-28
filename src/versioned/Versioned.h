@@ -21,4 +21,6 @@ class Versioned {
 
 	virtual void merge(const Revision *, const std::shared_ptr<Revision> &,
 			   const std::shared_ptr<Segment> &) = 0;
+
+	virtual ~Versioned() = default;
 };

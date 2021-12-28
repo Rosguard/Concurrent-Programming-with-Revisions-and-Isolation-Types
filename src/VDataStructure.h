@@ -8,42 +8,54 @@
 
 template <class T> class VDataStructure : public Versioned {
     protected:
+	T _dummy; // requires default constructor
 	std::unordered_map<int, std::optional<T> > _versions;
 
+	// useful to update _versions
+	void update_revision(const Revision *r, bool force_init = true);
+
 	void set(const Revision *r, const T &value);
-	std::optional<T> &get(const std::shared_ptr<Revision> &r);
-	std::optional<T> &
-	get_parent(const std::shared_ptr<Revision>
-			   &r); // get parent version of the data
+
+	// get value
+	std::optional<T> &get(const Revision *r);
+	// guarantee value for revision
+	T &get_guarantee(const Revision *r);
+	// get exact current version of the data or create dummy
+	T &get_no_update(const Revision *r);
+	T &get_no_update(const std::shared_ptr<Segment> &s);
+	// get parent version of the data
+	std::optional<T> &get_parent_data(const Revision *r);
 
 	[[nodiscard]] std::shared_ptr<Segment>
 	get_last_modified_segment(const std::shared_ptr<Revision> &r) const;
 
-    public:
-	void set(const T &value);
-	T &get();
+	virtual T &get();
 
+    public:
 	void release(const Segment *release) override;
 
 	void collapse(const Revision *main,
 		      const std::shared_ptr<Segment> &parent) override;
 
-	void merge(const Revision *main,
-		   const std::shared_ptr<Revision> &joinRev,
-		   const std::shared_ptr<Segment> &join) override;
-
-	virtual ~VDataStructure();
+	~VDataStructure() override;
 };
+
+template <class T> T &VDataStructure<T>::get()
+{
+	return get(Revision::thread_revision().get()).value();
+}
 
 template <class T> void VDataStructure<T>::release(const Segment *release)
 {
 	_versions[release->version()] = std::nullopt;
 }
 
+// TODO: need rewrite for each ds?
 template <class T>
 void VDataStructure<T>::collapse(const Revision *main,
 				 const std::shared_ptr<Segment> &parent)
 {
+	// TODO: possible error?
 	if (!_versions[main->current()->version()]) {
 		set(main, _versions[parent->version()].value());
 	}
@@ -53,60 +65,26 @@ void VDataStructure<T>::collapse(const Revision *main,
 template <class T>
 void VDataStructure<T>::set(const Revision *r, const T &value)
 {
-	DEBUG_ONLY("Set value");
-
-	if (!_versions[r->current()->version()]) {
-		DEBUG_ONLY("Record set to Segment: " + r->current()->dump() +
-			   " at pos: " +
-			   std::to_string(r->current()->written().size()));
-		r->current()->written().push_back(this);
-	}
+	update_revision(r, false);
 	_versions[r->current()->version()] = value;
 }
 
-template <class T>
-void VDataStructure<T>::merge(const Revision *main,
-			      const std::shared_ptr<Revision> &joinRev,
-			      const std::shared_ptr<Segment> &join)
-{
-	DEBUG_ONLY("Try merge");
-
-	if (get_last_modified_segment(joinRev) == join) {
-		DEBUG_ONLY("Make merge");
-		set(main, _versions[join->version()].value());
-	}
-}
-
-template <class T>
-std::optional<T> &VDataStructure<T>::get(const std::shared_ptr<Revision> &r)
+template <class T> std::optional<T> &VDataStructure<T>::get(const Revision *r)
 {
 	if (_versions[r->current()->version()]) {
 		return _versions[r->current()->version()];
 	}
 
-	return get_parent(r);
-}
-
-template <class T> void VDataStructure<T>::set(const T &value)
-{
-	set(Revision::thread_revision().get(), value);
-}
-
-template <class T> T &VDataStructure<T>::get()
-{
-	return get(Revision::thread_revision()).value();
+	return get_parent_data(r);
 }
 
 template <class T> VDataStructure<T>::~VDataStructure()
 {
 	// delete all references to this data, because we are leaving context
 	auto s = Revision::thread_revision()->current();
-	if (s->written().empty()) {
-		return;
-	}
-	auto to_delete = std::remove_if(
-		s->written().begin(), s->written().end(),
-		[this](const Versioned *ptr) { return ptr == this; });
+
+	auto to_delete =
+		std::remove(s->written().begin(), s->written().end(), this);
 	if (to_delete != s->written().end()) {
 		s->written().erase(to_delete);
 	}
@@ -127,20 +105,49 @@ std::shared_ptr<Segment> VDataStructure<T>::get_last_modified_segment(
 }
 
 template <class T>
-std::optional<T> &
-VDataStructure<T>::get_parent(const std::shared_ptr<Revision> &r)
+std::optional<T> &VDataStructure<T>::get_parent_data(const Revision *r)
 {
 	if (!r->current()->parent()) {
 		return _versions[r->current()->version()]; // nullopt
 	}
 
 	auto s = r->current()->parent();
-	while (!_versions[s->version()]) {
-		if (!s->parent()) {
-			break; // nullopt, not found
-		}
+	while (s->parent() && !_versions[s->version()]) {
 		s = s->parent();
 	}
 
 	return _versions[s->version()];
+}
+
+template <class T>
+void VDataStructure<T>::update_revision(const Revision *r, bool force_init)
+{
+	if (!this->_versions[r->current()->version()]) {
+		DEBUG_ONLY("Record write to Segment: " + r->current()->dump());
+		r->current()->written().push_back(this);
+
+		if (force_init) {
+			this->_versions[r->current()->version()] =
+				this->get(Revision::thread_revision().get())
+					.value_or(_dummy);
+		}
+	}
+}
+
+template <class T> T &VDataStructure<T>::get_no_update(const Revision *r)
+{
+	return get_no_update(r->current());
+}
+
+template <class T> T &VDataStructure<T>::get_guarantee(const Revision *r)
+{
+	update_revision(r, true);
+	return get(r).value();
+}
+
+template <class T>
+T &VDataStructure<T>::get_no_update(const std::shared_ptr<Segment> &s)
+{
+	return _versions[s->version()] ? _versions[s->version()].value() :
+					       _dummy;
 }

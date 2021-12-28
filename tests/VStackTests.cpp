@@ -3,8 +3,6 @@
 
 TEST(VStackTest, push_top)
 {
-	DEBUG_ONLY("\nSTART TEST " + std::string(test_info_->name()));
-
 	VStack<int> stack;
 
 	stack.push(1);
@@ -13,8 +11,6 @@ TEST(VStackTest, push_top)
 
 TEST(VStackTest, push_pop_size)
 {
-	DEBUG_ONLY("\nSTART TEST " + std::string(test_info_->name()));
-
 	VStack<int> stack;
 
 	stack.push(1);
@@ -24,10 +20,8 @@ TEST(VStackTest, push_pop_size)
 	ASSERT_EQ(stack.size(), 0);
 }
 
-TEST(VStackTest, basic_multithread_test)
+TEST(VStackTest, multithread_test)
 {
-	DEBUG_ONLY("\nSTART TEST " + std::string(test_info_->name()));
-
 	VStack<int> stack;
 
 	for (int i = 0; i < 10; i++) {
@@ -50,9 +44,6 @@ TEST(VStackTest, basic_multithread_test)
 		}
 		ASSERT_EQ(stack.size(), 5);
 
-		DEBUG_ONLY(std::string(test_info_->name()) +
-			   " set by thread 1");
-
 		for (int i = 0; i < 5; i++) {
 			stack.push(i * 3); // top: 12 9 6 3 0 4 3 2 1 0
 		}
@@ -68,9 +59,6 @@ TEST(VStackTest, basic_multithread_test)
 			stack.pop();
 		}
 		ASSERT_EQ(stack.size(), 7);
-
-		DEBUG_ONLY(std::string(test_info_->name()) +
-			   " set by thread 2");
 
 		for (int i = 0; i < 7; i++) {
 			stack.push(i *
@@ -90,7 +78,7 @@ TEST(VStackTest, basic_multithread_test)
 	/*
 	 * 1. r2:		60 50 40 30 20 10 0 6 5 4 3 2 1 0
 	 * 2. main:		      		      	      1 0
-	 * 3. _original_stack:   	      9 8 7 6 5 4 3 2 1 0
+	 * 3. original stack:   	      9 8 7 6 5 4 3 2 1 0
 	 * 3. res:      		  60 50 40 30 20 10 0 1 0
 	 */
 
@@ -101,7 +89,7 @@ TEST(VStackTest, basic_multithread_test)
 	/*
 	 * 1. r1:			     12 9 6 3 0 4 3 2 1 0
 	 * 2. main:		          60 50 40 30 20 10 0 1 0
-	 * 3. _original_stack:   	      9 8 7 6 5 4 3 2 1 0
+	 * 3. original stack:   	      9 8 7 6 5 4 3 2 1 0
 	 * 3. res:             12 9 6 3 0 60 50 40 30 20 10 0 1 0
 	 */
 
@@ -116,4 +104,26 @@ TEST(VStackTest, basic_multithread_test)
 		stack.pop();
 		good_answer.pop_back();
 	}
+}
+
+TEST(VStackTest, nothing_doing_test)
+{
+	VStack<int> stack;
+	ASSERT_EQ(stack.size(), 0);
+
+	// 1st thread
+	const auto r1 = Revision::thread_revision()->fork(
+		[&stack]() { ASSERT_EQ(stack.size(), 0); });
+
+	// 2nd thread
+	const auto r2 = Revision::thread_revision()->fork(
+		[&stack]() { ASSERT_EQ(stack.size(), 0); });
+
+	ASSERT_EQ(stack.size(), 0);
+
+	Revision::thread_revision()->join(r2);
+	ASSERT_EQ(stack.size(), 0);
+
+	Revision::thread_revision()->join(r1);
+	ASSERT_EQ(stack.size(), 0);
 }

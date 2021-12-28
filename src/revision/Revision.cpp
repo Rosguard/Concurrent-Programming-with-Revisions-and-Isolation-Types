@@ -23,7 +23,6 @@ std::shared_ptr<Revision> Revision::fork(const std::function<void()> &action)
 	r->_task = std::thread([r, action]() {
 		const auto prev_rev = _current_revision;
 		_current_revision = r;
-		DEBUG_ONLY("New thread: " + _current_revision->dump());
 
 		action();
 

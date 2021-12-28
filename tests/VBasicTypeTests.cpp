@@ -1,32 +1,26 @@
-#include "VDataStructure.h"
+#include "VBasicType.h"
 #include <gtest/gtest.h>
 
-TEST(VDataStructureTest, set_get)
+TEST(VBasicTypeTest, set_get)
 {
-	DEBUG_ONLY("\nSTART TEST " + std::string(test_info_->name()));
-
-	VDataStructure<int> var;
+	VBasicType<int> var;
 
 	var.set(1);
 	ASSERT_EQ(var.get(), 1);
 }
 
-TEST(VDataStructureTest, last_set)
+TEST(VBasicTypeTest, last_set)
 {
-	DEBUG_ONLY("\nSTART TEST " + std::string(test_info_->name()));
-
-	VDataStructure<int> var;
+	VBasicType<int> var;
 
 	var.set(1);
 	var.set(2);
 	ASSERT_EQ(var.get(), 2);
 }
 
-TEST(VDataStructureTest, basic_multithread_test)
+TEST(VBasicTypeTest, basic_multithread_test)
 {
-	DEBUG_ONLY("\nSTART TEST " + std::string(test_info_->name()));
-
-	VDataStructure<int> var;
+	VBasicType<int> var;
 
 	var.set(1);
 	volatile bool synchro = false;
@@ -38,9 +32,6 @@ TEST(VDataStructureTest, basic_multithread_test)
 
 		ASSERT_EQ(var.get(), 1);
 
-		DEBUG_ONLY(std::string(test_info_->name()) +
-			   " set by thread 1");
-
 		var.set(2);
 		ASSERT_EQ(var.get(), 2);
 	});
@@ -48,9 +39,6 @@ TEST(VDataStructureTest, basic_multithread_test)
 	// 2nd thread
 	const auto r2 = Revision::thread_revision()->fork([&var]() {
 		ASSERT_EQ(var.get(), 1);
-
-		DEBUG_ONLY(std::string(test_info_->name()) +
-			   " set by thread 2");
 
 		var.set(3);
 		ASSERT_EQ(var.get(), 3);
@@ -67,11 +55,9 @@ TEST(VDataStructureTest, basic_multithread_test)
 	ASSERT_EQ(var.get(), 2);
 }
 
-TEST(VDataStructureTest, perfect_nested_threads)
+TEST(VBasicTypeTest, perfect_nested_threads)
 {
-	DEBUG_ONLY("\nSTART TEST " + std::string(test_info_->name()));
-
-	VDataStructure<int> var;
+	VBasicType<int> var;
 
 	var.set(1);
 
@@ -99,11 +85,9 @@ TEST(VDataStructureTest, perfect_nested_threads)
 	ASSERT_EQ(var.get(), 3);
 }
 
-TEST(VDataStructureTest, nested_threads)
+TEST(VBasicTypeTest, nested_threads)
 {
-	DEBUG_ONLY("\nSTART TEST " + std::string(test_info_->name()));
-
-	VDataStructure<int> var;
+	VBasicType<int> var;
 
 	var.set(1);
 	std::shared_ptr<Revision> r2;
