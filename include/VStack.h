@@ -3,55 +3,42 @@
 #include "VDataStructure.h"
 #include <stack>
 
-template <class T> class VStack : VDataStructure<std::stack<T> > {
-    private:
-	void update_revision();
+// Only C++11 conformance.
+// Notice that there is no const methods!
+// TODO: rewrite on std::vector
+template <class T> class VStack : public VDataStructure<std::stack<T> > {
+    protected:
+	// TODO: seriously?
+	using VDataStructure<std::stack<T> >::update_revision;
+	using VDataStructure<std::stack<T> >::get;
+	using VDataStructure<std::stack<T> >::get_last_modified_segment;
+	using VDataStructure<std::stack<T> >::get_parent_data;
+	using VDataStructure<std::stack<T> >::_dummy;
+	using VDataStructure<std::stack<T> >::get_no_update;
+	using VDataStructure<std::stack<T> >::get_guarantee;
+
+	static std::stack<T> reverse(std::stack<T> orig);
 
     public:
+	// TODO: constructors, destructors, operator=, emplace, https://en.cppreference.com/w/cpp/container/stack
+
+	// TODO: push with &&
 	void push(const T &value);
 	void pop();
-	T &top();
-	[[nodiscard]] size_t size();
+	// TODO: top with non const_reference
+	const T &top();
+
+	typename std::stack<T>::size_type size();
+	bool empty();
+
+	void swap(VStack<T> &other);
 
 	void merge(const Revision *main,
 		   const std::shared_ptr<Revision> &joinRev,
 		   const std::shared_ptr<Segment> &join) override;
 };
 
-template <class T> void VStack<T>::push(const T &value)
-{
-	DEBUG_ONLY("Push on VStack.");
-
-	update_revision();
-	this->_versions[Revision::thread_revision()->current()->version()]
-		.value()
-		.push(value);
-}
-
-template <class T> void VStack<T>::pop()
-{
-	DEBUG_ONLY("Pop from VStack.");
-
-	update_revision();
-	return this
-		->_versions[Revision::thread_revision()->current()->version()]
-		.value()
-		.pop();
-}
-
-template <class T> T &VStack<T>::top()
-{
-	update_revision();
-	return this->get().top();
-}
-
-template <class T> size_t VStack<T>::size()
-{
-	const auto &value = this->get(Revision::thread_revision());
-	return value.has_value() ? value.value().size() : 0;
-}
-
-template <class T> std::stack<T> reverse(std::stack<T> &orig)
+template <class T> std::stack<T> VStack<T>::reverse(std::stack<T> orig)
 {
 	std::stack<T> result;
 	while (!orig.empty()) {
@@ -62,13 +49,34 @@ template <class T> std::stack<T> reverse(std::stack<T> &orig)
 	return result;
 }
 
+template <class T> void VStack<T>::push(const T &value)
+{
+	get_guarantee(Revision::thread_revision().get()).push(value);
+}
+
+template <class T> void VStack<T>::pop()
+{
+	get_guarantee(Revision::thread_revision().get()).pop();
+}
+
+template <class T> const T &VStack<T>::top()
+{
+	const auto &val = get(Revision::thread_revision().get());
+	return val ? val.value().top() :
+			   _dummy.top(); // guarantee stack semantics
+}
+
+template <class T> typename std::stack<T>::size_type VStack<T>::size()
+{
+	const auto &val = get(Revision::thread_revision().get());
+	return val ? val.value().size() : 0;
+}
+
 template <class T>
 void VStack<T>::merge(const Revision *main,
 		      const std::shared_ptr<Revision> &joinRev,
 		      const std::shared_ptr<Segment> &join)
 {
-	DEBUG_ONLY("Try merge VStack.");
-
 	/* Merge strategy:
 	 * 0. reverse all stacks
 	 * 1. all common elements of main and _original_stack VStacks -> 1'
@@ -78,19 +86,20 @@ void VStack<T>::merge(const Revision *main,
 	 * 5. ~(current - 2') -> 5'
 	 * 6. result stack: 3' 4' 5'
 	 */
-	if (this->get_last_modified_segment(joinRev) == join) {
-		DEBUG_ONLY("Make merge VStack.");
+	if (get_last_modified_segment(joinRev) == join) {
+		DEBUG_ONLY("Merge VStacks.");
 
-		std::stack<T> original_stack =
-			this->get_parent(joinRev).value_or(std::stack<T>());
-		original_stack = reverse(original_stack);
-		std::stack<T> main_stack = reverse(
-			this->_versions[main->current()->version()].value());
-		std::stack<T> current_stack =
-			reverse(this->_versions[join->version()].value());
+		std::stack<T> original_stack(reverse(
+			get_parent_data(joinRev.get()).value_or(_dummy)));
+		std::stack<T> main_stack(reverse(get_no_update(main)));
+		std::stack<T> current_stack(reverse(get_no_update(join)));
 
-		std::stack<T> &new_stack =
-			this->_versions[main->current()->version()].value();
+		std::stack<T> &new_stack = get_guarantee(main);
+
+		// clear current version
+		std::stack<T> empty;
+		new_stack.swap(empty);
+
 		// calculate 3'
 		while (!main_stack.empty() && !current_stack.empty() &&
 		       !original_stack.empty() &&
@@ -128,18 +137,15 @@ void VStack<T>::merge(const Revision *main,
 	}
 }
 
-template <class T> void VStack<T>::update_revision()
+template <class T> bool VStack<T>::empty()
 {
-	const auto r = Revision::thread_revision();
-	if (!this->_versions[r->current()->version()]) {
-		DEBUG_ONLY("Record write to Segment: " + r->current()->dump() +
-			   " at pos: " +
-			   std::to_string(r->current()->written().size()));
-		r->current()->written().push_back(this);
+	return size() == 0;
+}
 
-		// copy previous stack
-		this->_versions[r->current()->version()] =
-			this->get(Revision::thread_revision())
-				.value_or(std::stack<T>());
-	}
+template <class T> void VStack<T>::swap(VStack<T> &other)
+{
+	update_revision(Revision::thread_revision());
+	other.update_revision(Revision::thread_revision());
+
+	get().swap(other.get());
 }

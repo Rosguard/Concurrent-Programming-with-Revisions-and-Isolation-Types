@@ -3,8 +3,6 @@
 
 TEST(VQueueTest, push_back)
 {
-	DEBUG_ONLY("\nSTART TEST " + std::string(test_info_->name()));
-
 	VQueue<int> queue;
 
 	queue.push(1);
@@ -16,8 +14,6 @@ TEST(VQueueTest, push_back)
 
 TEST(VQueueTest, push_front)
 {
-	DEBUG_ONLY("\nSTART TEST " + std::string(test_info_->name()));
-
 	VQueue<int> queue;
 
 	queue.push(1);
@@ -29,8 +25,6 @@ TEST(VQueueTest, push_front)
 
 TEST(VQueueTest, push_pop_size)
 {
-	DEBUG_ONLY("\nSTART TEST " + std::string(test_info_->name()));
-
 	VQueue<int> queue;
 
 	queue.push(1);
@@ -42,8 +36,6 @@ TEST(VQueueTest, push_pop_size)
 
 TEST(VQueueTest, basic_multithread_test_1)
 {
-	DEBUG_ONLY("\nSTART TEST " + std::string(test_info_->name()));
-
 	VQueue<int> queue;
 
 	for (int i = 0; i < 10; i++) {
@@ -66,9 +58,6 @@ TEST(VQueueTest, basic_multithread_test_1)
 		}
 		ASSERT_EQ(queue.size(), 5);
 
-		DEBUG_ONLY(std::string(test_info_->name()) +
-			   " set by thread 1");
-
 		for (int i = 0; i < 5; i++) {
 			queue.push(i * 3); //front: 5 6 7 8 9 0 3 6 9 12
 		}
@@ -84,9 +73,6 @@ TEST(VQueueTest, basic_multithread_test_1)
 			queue.pop(); //front: 3 4 5 6 7 8 9
 		}
 		ASSERT_EQ(queue.size(), 7);
-
-		DEBUG_ONLY(std::string(test_info_->name()) +
-			   " set by thread 2");
 
 		for (int i = 0; i < 7; i++) {
 			queue.push(
@@ -107,7 +93,7 @@ TEST(VQueueTest, basic_multithread_test_1)
 	/*
 	 * 1. r2:		3 4 5 6 7 8 9 0 10 20 30 40 50 60
 	 * 2. main:		      		      	      8 9
-	 * 3. _original_queue:   	      0 1 2 3 4 5 6 7 8 9
+	 * 3. original queue:   	      0 1 2 3 4 5 6 7 8 9
 	 * 3. res:		          8 9 0 10 20 30 40 50 60
 	 */
 
@@ -117,7 +103,7 @@ TEST(VQueueTest, basic_multithread_test_1)
 	/*
 	 * 1. r1:			     5 6 7 8 9 0 3 6 9 12
 	 * 2. main:		          8 9 0 10 20 30 40 50 60
-	 * 3. _original_queue:   	      0 1 2 3 4 5 6 7 8 9
+	 * 3. original queue:   	      0 1 2 3 4 5 6 7 8 9
 	 * 3. res:             8 9 0 10 20 30 40 50 60 0 3 6 9 12
 	 */
 
@@ -136,8 +122,6 @@ TEST(VQueueTest, basic_multithread_test_1)
 
 TEST(VQueueTest, basic_multithread_test_2)
 {
-	DEBUG_ONLY("\nSTART TEST " + std::string(test_info_->name()));
-
 	VQueue<int> queue;
 
 	for (int i = 0; i < 10; i++) {
@@ -165,9 +149,6 @@ TEST(VQueueTest, basic_multithread_test_2)
 			queue.pop(); //front: 100 200 300 400 500
 		}
 		ASSERT_EQ(queue.size(), 5);
-
-		DEBUG_ONLY(std::string(test_info_->name()) +
-			   " set by thread 1");
 	});
 
 	// 2nd thread
@@ -179,9 +160,6 @@ TEST(VQueueTest, basic_multithread_test_2)
 			queue.pop(); //front: 3 4 5 6 7 8 9
 		}
 		ASSERT_EQ(queue.size(), 7);
-
-		DEBUG_ONLY(std::string(test_info_->name()) +
-			   " set by thread 2");
 
 		for (int i = 0; i < 7; i++) {
 			queue.push(
@@ -236,8 +214,6 @@ TEST(VQueueTest, basic_multithread_test_2)
 
 TEST(VQueueTest, basic_multithread_test_3)
 {
-	DEBUG_ONLY("\nSTART TEST " + std::string(test_info_->name()));
-
 	VQueue<int> queue;
 
 	for (int i = 0; i < 10; i++) {
@@ -265,17 +241,11 @@ TEST(VQueueTest, basic_multithread_test_3)
 			queue.pop(); //front: 6 7 8 9 100 200 300 400 500
 		}
 		ASSERT_EQ(queue.size(), 9);
-
-		DEBUG_ONLY(std::string(test_info_->name()) +
-			   " set by thread 1");
 	});
 
 	// 2nd thread
 	const auto r2 = Revision::thread_revision()->fork([&queue]() {
 		ASSERT_EQ(queue.size(), 10);
-
-		DEBUG_ONLY(std::string(test_info_->name()) +
-			   " set by thread 2");
 
 		for (int i = 1; i < 3; i++) {
 			queue.push(i * 10); //front: 0 1 2 3 4 5 6 7 8 9 10 20
