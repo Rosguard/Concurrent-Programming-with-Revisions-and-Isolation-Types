@@ -14,7 +14,6 @@ template <class T> class VQueue : public VDataStructure<std::queue<T> > {
 	using VDataStructure<std::queue<T> >::get_last_modified_segment;
 	using VDataStructure<std::queue<T> >::get_parent_data;
 	using VDataStructure<std::queue<T> >::_dummy;
-	using VDataStructure<std::queue<T> >::get_no_update;
 	using VDataStructure<std::queue<T> >::get_guarantee;
 
 	static bool is_sub_queue(const std::queue<T> &original_queue,
@@ -81,10 +80,10 @@ void VQueue<T>::merge(const Revision *main,
 	if (this->get_last_modified_segment(joinRev) == join) {
 		DEBUG_ONLY("Merge VQueue.");
 
-		std::queue<T> original_queue(
-			get_parent_data(joinRev.get()).value_or(_dummy));
-		std::queue<T> main_queue(get_no_update(main));
-		std::queue<T> current_queue(get_no_update(join));
+		std::queue<T> original_queue =
+			get_parent_data(joinRev.get()).value_or(_dummy);
+		std::queue<T> main_queue = get(main).value_or(_dummy);
+		std::queue<T> current_queue = get(join).value_or(_dummy);
 
 		std::queue<T> &new_queue = get_guarantee(main);
 
