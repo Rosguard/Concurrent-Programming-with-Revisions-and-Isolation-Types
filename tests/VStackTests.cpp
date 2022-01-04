@@ -20,6 +20,45 @@ TEST(VStackTest, push_pop_size)
 	ASSERT_EQ(stack.size(), 0);
 }
 
+TEST(VStackTest, empty_test)
+{
+	VStack<int> stack;
+	ASSERT_EQ(stack.size(), 0);
+	ASSERT_EQ(stack.empty(), true);
+
+	stack.push(1);
+	ASSERT_EQ(stack.size(), 1);
+	ASSERT_EQ(stack.empty(), false);
+
+	stack.pop();
+	ASSERT_EQ(stack.size(), 0);
+	ASSERT_EQ(stack.empty(), true);
+}
+
+TEST(VStackTest, swap_test)
+{
+	VStack<int> first_stack;
+	ASSERT_EQ(first_stack.size(), 0);
+
+	VStack<int> second_stack;
+	ASSERT_EQ(second_stack.size(), 0);
+
+	for (int i = 0; i < 6; ++i) {
+		first_stack.push(i * 30);
+	}
+	ASSERT_EQ(first_stack.size(), 6);
+
+	for (int i = 0; i < 10; ++i) {
+		second_stack.push(i * 100);
+	}
+	ASSERT_EQ(second_stack.size(), 10);
+
+	first_stack.swap(second_stack);
+
+	ASSERT_EQ(second_stack.size(), 6);
+	ASSERT_EQ(first_stack.size(), 10);
+}
+
 TEST(VStackTest, multithread)
 {
 	VStack<int> stack;

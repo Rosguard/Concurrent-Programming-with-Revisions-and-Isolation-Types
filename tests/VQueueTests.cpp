@@ -34,6 +34,45 @@ TEST(VQueueTest, push_pop_size)
 	ASSERT_EQ(queue.size(), 0);
 }
 
+TEST(VQueueTest, empty_test)
+{
+	VQueue<int> queue;
+	ASSERT_EQ(queue.size(), 0);
+	ASSERT_EQ(queue.empty(), true);
+
+	queue.push(1);
+	ASSERT_EQ(queue.size(), 1);
+	ASSERT_EQ(queue.empty(), false);
+
+	queue.pop();
+	ASSERT_EQ(queue.size(), 0);
+	ASSERT_EQ(queue.empty(), true);
+}
+
+TEST(VQueueTest, swap_test)
+{
+	VQueue<int> first_queue;
+	ASSERT_EQ(first_queue.size(), 0);
+
+	VQueue<int> second_queue;
+	ASSERT_EQ(second_queue.size(), 0);
+
+	for (int i = 0; i < 6; ++i) {
+		first_queue.push(i * 30);
+	}
+	ASSERT_EQ(first_queue.size(), 6);
+
+	for (int i = 0; i < 10; ++i) {
+		second_queue.push(i * 100);
+	}
+	ASSERT_EQ(second_queue.size(), 10);
+
+	first_queue.swap(second_queue);
+
+	ASSERT_EQ(second_queue.size(), 6);
+	ASSERT_EQ(first_queue.size(), 10);
+}
+
 TEST(VQueueTest, multithread_1)
 {
 	VQueue<int> queue;
@@ -306,4 +345,65 @@ TEST(VQueueTest, multithread_3)
 		queue.pop();
 		good_answer.pop_back();
 	}
+}
+
+TEST(VQueueTest, nothing_doing_test)
+{
+	VQueue<int> queue;
+	ASSERT_EQ(queue.size(), 0);
+
+	// 1st thread
+	const auto r1 = Revision::thread_revision()->fork(
+		[&queue]() { ASSERT_EQ(queue.size(), 0); });
+
+	// 2nd thread
+	const auto r2 = Revision::thread_revision()->fork(
+		[&queue]() { ASSERT_EQ(queue.size(), 0); });
+
+	ASSERT_EQ(queue.size(), 0);
+
+	Revision::thread_revision()->join(r2);
+	ASSERT_EQ(queue.size(), 0);
+
+	Revision::thread_revision()->join(r1);
+	ASSERT_EQ(queue.size(), 0);
+}
+
+TEST(VQueueTest, long_segment_chain)
+{
+	VQueue<int> queue;
+
+	std::shared_ptr<Revision> r1, r2, r3, r4;
+
+	// 1st thread
+	r1 = Revision::thread_revision()->fork(
+		[&queue]() { ASSERT_EQ(queue.size(), 0); });
+
+	// 2nd thread
+	r2 = Revision::thread_revision()->fork(
+		[&queue]() { ASSERT_EQ(queue.size(), 0); });
+	queue.push(1);
+
+	// 3rd thread
+	r3 = Revision::thread_revision()->fork(
+		[&queue]() { ASSERT_EQ(queue.size(), 1); });
+
+	// 4th thread
+	r4 = Revision::thread_revision()->fork(
+		[&queue]() { ASSERT_EQ(queue.size(), 1); });
+
+	ASSERT_EQ(queue.size(), 1);
+
+	Revision::thread_revision()->join(r1);
+	ASSERT_EQ(queue.size(), 1);
+
+	Revision::thread_revision()->join(r2);
+	ASSERT_EQ(queue.size(), 1);
+
+	Revision::thread_revision()->join(r3);
+	ASSERT_EQ(queue.size(), 1);
+
+	Revision::thread_revision()->join(r4);
+	ASSERT_EQ(queue.front(), 1);
+	ASSERT_EQ(queue.size(), 1);
 }
