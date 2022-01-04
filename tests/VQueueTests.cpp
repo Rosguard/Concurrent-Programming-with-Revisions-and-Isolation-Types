@@ -34,7 +34,7 @@ TEST(VQueueTest, push_pop_size)
 	ASSERT_EQ(queue.size(), 0);
 }
 
-TEST(VQueueTest, basic_multithread_test_1)
+TEST(VQueueTest, multithread_1)
 {
 	VQueue<int> queue;
 
@@ -120,7 +120,7 @@ TEST(VQueueTest, basic_multithread_test_1)
 	}
 }
 
-TEST(VQueueTest, basic_multithread_test_2)
+TEST(VQueueTest, multithread_2)
 {
 	VQueue<int> queue;
 
@@ -212,7 +212,7 @@ TEST(VQueueTest, basic_multithread_test_2)
 	}
 }
 
-TEST(VQueueTest, basic_multithread_test_3)
+TEST(VQueueTest, multithread_3)
 {
 	VQueue<int> queue;
 

@@ -13,7 +13,7 @@ class Revision;
 class Segment;
 
 class Versioned {
-    public:
+    protected:
 	virtual void release(const Segment *) = 0;
 
 	virtual void collapse(const Revision *,
@@ -23,4 +23,7 @@ class Versioned {
 			   const std::shared_ptr<Segment> &) = 0;
 
 	virtual ~Versioned() = default;
+
+	friend class Segment;
+	friend class Revision;
 };

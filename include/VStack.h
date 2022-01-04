@@ -8,13 +8,11 @@
 // TODO: rewrite on std::vector
 template <class T> class VStack : public VDataStructure<std::stack<T> > {
     protected:
-	// TODO: seriously?
 	using VDataStructure<std::stack<T> >::update_revision;
 	using VDataStructure<std::stack<T> >::get;
 	using VDataStructure<std::stack<T> >::get_last_modified_segment;
 	using VDataStructure<std::stack<T> >::get_parent_data;
 	using VDataStructure<std::stack<T> >::_dummy;
-	using VDataStructure<std::stack<T> >::get_no_update;
 	using VDataStructure<std::stack<T> >::get_guarantee;
 
 	static std::stack<T> reverse(std::stack<T> orig);
@@ -91,8 +89,9 @@ void VStack<T>::merge(const Revision *main,
 
 		std::stack<T> original_stack(reverse(
 			get_parent_data(joinRev.get()).value_or(_dummy)));
-		std::stack<T> main_stack(reverse(get_no_update(main)));
-		std::stack<T> current_stack(reverse(get_no_update(join)));
+		std::stack<T> main_stack(reverse(get(main).value_or(_dummy)));
+		std::stack<T> current_stack(
+			reverse(get(join).value_or(_dummy)));
 
 		std::stack<T> &new_stack = get_guarantee(main);
 
@@ -144,8 +143,6 @@ template <class T> bool VStack<T>::empty()
 
 template <class T> void VStack<T>::swap(VStack<T> &other)
 {
-	update_revision(Revision::thread_revision());
-	other.update_revision(Revision::thread_revision());
-
-	get().swap(other.get());
+	get_guarantee(Revision::thread_revision().get())
+		.swap(other.get_guarantee(Revision::thread_revision().get()));
 }

@@ -4,8 +4,9 @@
 
 template <class T> class VBasicType : public VDataStructure<T> {
     protected:
-	// TODO: seriously?
 	using VDataStructure<T>::set;
+	using VDataStructure<T>::get_last_modified_segment;
+	using VDataStructure<T>::_versions;
 
     public:
 	void set(const T &value);
@@ -31,8 +32,8 @@ void VBasicType<T>::merge(const Revision *main,
 			  const std::shared_ptr<Revision> &joinRev,
 			  const std::shared_ptr<Segment> &join)
 {
-	if (this->get_last_modified_segment(joinRev) == join) {
+	if (get_last_modified_segment(joinRev) == join) {
 		DEBUG_ONLY("Merge VBasicTypes.");
-		set(main, this->_versions[join->version()].value());
+		set(main, _versions[join->version()].value());
 	}
 }
