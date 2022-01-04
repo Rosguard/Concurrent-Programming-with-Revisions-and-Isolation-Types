@@ -50,13 +50,12 @@ template <class T> void VDataStructure<T>::release(const Segment *release)
 	_versions[release->version()] = std::nullopt;
 }
 
-// TODO: need rewrite for each ds?
 template <class T>
 void VDataStructure<T>::collapse(const Revision *main,
 				 const std::shared_ptr<Segment> &parent)
 {
-	// TODO: possible error?
 	if (!_versions[main->current()->version()]) {
+		assert(_versions[parent->version()].has_value());
 		set(main, _versions[parent->version()].value());
 	}
 	_versions[parent->version()] = std::nullopt;
@@ -136,7 +135,7 @@ void VDataStructure<T>::update_revision(const Revision *r, bool force_init)
 
 template <class T> T &VDataStructure<T>::get_guarantee(const Revision *r)
 {
-	update_revision(r, true);
+	update_revision(r);
 	return get(r).value();
 }
 

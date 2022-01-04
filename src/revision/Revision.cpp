@@ -21,12 +21,8 @@ std::shared_ptr<Revision> Revision::fork(const std::function<void()> &action)
 	_current = std::make_shared<Segment>(_current);
 
 	r->_task = std::thread([r, action]() {
-		const auto prev_rev = _current_revision;
 		_current_revision = r;
-
 		action();
-
-		_current_revision = prev_rev;
 	});
 
 	return r;

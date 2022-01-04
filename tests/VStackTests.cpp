@@ -20,7 +20,7 @@ TEST(VStackTest, push_pop_size)
 	ASSERT_EQ(stack.size(), 0);
 }
 
-TEST(VStackTest, multithread_test)
+TEST(VStackTest, multithread)
 {
 	VStack<int> stack;
 
@@ -106,7 +106,7 @@ TEST(VStackTest, multithread_test)
 	}
 }
 
-TEST(VStackTest, nothing_doing_test)
+TEST(VStackTest, nothing_doing)
 {
 	VStack<int> stack;
 	ASSERT_EQ(stack.size(), 0);
@@ -126,4 +126,43 @@ TEST(VStackTest, nothing_doing_test)
 
 	Revision::thread_revision()->join(r1);
 	ASSERT_EQ(stack.size(), 0);
+}
+
+TEST(VStackTest, long_segment_chain)
+{
+	VStack<int> stack;
+
+	std::shared_ptr<Revision> r1, r2, r3, r4;
+
+	// 1st thread
+	r1 = Revision::thread_revision()->fork(
+		[&stack]() { ASSERT_EQ(stack.size(), 0); });
+
+	// 2nd thread
+	r2 = Revision::thread_revision()->fork(
+		[&stack]() { ASSERT_EQ(stack.size(), 0); });
+	stack.push(1);
+
+	// 3rd thread
+	r3 = Revision::thread_revision()->fork(
+		[&stack]() { ASSERT_EQ(stack.size(), 1); });
+
+	// 4th thread
+	r4 = Revision::thread_revision()->fork(
+		[&stack]() { ASSERT_EQ(stack.size(), 1); });
+
+	ASSERT_EQ(stack.size(), 1);
+
+	Revision::thread_revision()->join(r1);
+	ASSERT_EQ(stack.size(), 1);
+
+	Revision::thread_revision()->join(r2);
+	ASSERT_EQ(stack.size(), 1);
+
+	Revision::thread_revision()->join(r3);
+	ASSERT_EQ(stack.size(), 1);
+
+	Revision::thread_revision()->join(r4);
+	ASSERT_EQ(stack.top(), 1);
+	ASSERT_EQ(stack.size(), 1);
 }

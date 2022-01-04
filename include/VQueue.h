@@ -8,7 +8,6 @@
 // TODO: rewrite on std::vector
 template <class T> class VQueue : public VDataStructure<std::queue<T> > {
     protected:
-	// TODO: seriously?
 	using VDataStructure<std::queue<T> >::update_revision;
 	using VDataStructure<std::queue<T> >::get;
 	using VDataStructure<std::queue<T> >::get_last_modified_segment;

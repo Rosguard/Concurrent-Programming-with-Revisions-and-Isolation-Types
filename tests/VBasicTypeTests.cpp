@@ -18,7 +18,7 @@ TEST(VBasicTypeTest, last_set)
 	ASSERT_EQ(var.get(), 2);
 }
 
-TEST(VBasicTypeTest, basic_multithread_test)
+TEST(VBasicTypeTest, multithread)
 {
 	VBasicType<int> var;
 

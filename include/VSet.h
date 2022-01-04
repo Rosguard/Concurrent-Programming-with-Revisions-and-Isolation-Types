@@ -14,8 +14,11 @@ template <class T> class VSet : VDataStructure<std::set<T> > {
 	static std::set<T> difference(const std::set<T> &s1,
 				      const std::set<T> &s2);
 
+	static typename std::set<T>::value_compare _default_val_cmp;
+	static typename std::set<T>::key_compare _default_key_cmp;
+	static typename std::set<T>::size_type _default_max_size;
+
     public:
-	// TODO: seriously?
 	using VDataStructure<std::set<T> >::update_revision;
 	using VDataStructure<std::set<T> >::get_guarantee;
 	using VDataStructure<std::set<T> >::get;
@@ -65,6 +68,18 @@ template <class T> class VSet : VDataStructure<std::set<T> > {
 		   const std::shared_ptr<Segment> &join) override;
 };
 
+template <class T>
+typename std::set<T>::value_compare
+	VSet<T>::_default_val_cmp = std::set<T>().value_comp();
+
+template <class T>
+typename std::set<T>::key_compare
+	VSet<T>::_default_key_cmp = std::set<T>().key_comp();
+
+template <class T>
+typename std::set<T>::size_type
+	VSet<T>::_default_max_size = std::set<T>().max_size();
+
 template <class T> bool VSet<T>::empty()
 {
 	return size() == 0;
@@ -84,9 +99,7 @@ template <class T> void VSet<T>::clear()
 template <class T> typename std::set<T>::size_type VSet<T>::max_size()
 {
 	const auto &value = get(Revision::thread_revision().get());
-	return value ? value.value().max_size() :
-			     std::set<T>()
-			       .max_size(); // TODO: what is the default value?
+	return value ? value.value().max_size() : _default_max_size;
 }
 
 template <class T>
@@ -143,17 +156,13 @@ typename std::set<T>::iterator VSet<T>::upper_bound(const T &key)
 template <class T> typename std::set<T>::key_compare VSet<T>::key_comp()
 {
 	const auto &value = get(Revision::thread_revision().get());
-	return value ? value.value().key_comp() :
-			     std::set<T>()
-			       .key_comp(); // TODO: what is the default value?
+	return value ? value.value().key_comp() : _default_key_cmp;
 }
 
 template <class T> typename std::set<T>::value_compare VSet<T>::value_comp()
 {
 	const auto &value = get(Revision::thread_revision().get());
-	return value ? value.value().value_compare() :
-			     std::set<T>()
-			       .value_compare(); // TODO: what is the default value?
+	return value ? value.value().value_compare() : _default_val_cmp;
 }
 
 template <class T>

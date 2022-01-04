@@ -109,7 +109,7 @@ TEST(VSetTest, swap)
 	ASSERT_NE(set2.find(1), set2.end());
 }
 
-TEST(VSetTest, multithread_test)
+TEST(VSetTest, multithread)
 {
 	VSet<int> set;
 	VSet<int> set2;

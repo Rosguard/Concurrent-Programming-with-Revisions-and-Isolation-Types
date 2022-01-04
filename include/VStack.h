@@ -8,7 +8,6 @@
 // TODO: rewrite on std::vector
 template <class T> class VStack : public VDataStructure<std::stack<T> > {
     protected:
-	// TODO: seriously?
 	using VDataStructure<std::stack<T> >::update_revision;
 	using VDataStructure<std::stack<T> >::get;
 	using VDataStructure<std::stack<T> >::get_last_modified_segment;
