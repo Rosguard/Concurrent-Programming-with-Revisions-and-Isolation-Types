@@ -15,8 +15,6 @@ template <class T> class VQueue : public VDataStructure<std::queue<T> > {
 	using VDataStructure<std::queue<T> >::_dummy;
 	using VDataStructure<std::queue<T> >::get_guarantee;
 
-	static bool is_sub_queue(const std::queue<T> &original_queue,
-				 const std::queue<T> &check_queue);
 	static size_t sub_queue_length(const std::queue<T> &original_queue,
 				       const std::queue<T> &check_queue);
 
@@ -71,6 +69,17 @@ template <class T> typename std::queue<T>::size_type VQueue<T>::size()
 	return value ? value.value().size() : 0;
 }
 
+template <class T> bool VQueue<T>::empty()
+{
+	return size() == 0;
+}
+
+template <class T> void VQueue<T>::swap(VQueue<T> &other)
+{
+	get_guarantee(Revision::thread_revision().get())
+		.swap(other.get_guarantee(Revision::thread_revision().get()));
+}
+
 template <class T>
 void VQueue<T>::merge(const Revision *main,
 		      const std::shared_ptr<Revision> &joinRev,
@@ -81,109 +90,30 @@ void VQueue<T>::merge(const Revision *main,
 
 		std::queue<T> original_queue =
 			get_parent_data(joinRev.get()).value_or(_dummy);
-		std::queue<T> main_queue = get(main).value_or(_dummy);
 		std::queue<T> current_queue = get(join).value_or(_dummy);
 
 		std::queue<T> &new_queue = get_guarantee(main);
 
-		bool isMainSub = is_sub_queue(original_queue, main_queue);
-		bool isCurrentSub = is_sub_queue(original_queue, current_queue);
+		size_t current_sub_size =
+			sub_queue_length(original_queue, current_queue);
+		size_t main_sub_size =
+			sub_queue_length(original_queue, new_queue);
 
-		if (!isMainSub) {
-			if (!isCurrentSub) {
-				//If all elements of main and current aren't elements from original queue
-				//res: main + current
-				while (!current_queue.empty()) {
-					new_queue.push(current_queue.front());
-					current_queue.pop();
-				}
-			} else {
-				//If all elements of main aren't elements from original queue
-				//And some elements of current are elements from original queue
-				//res: main + current(without original elements)
-				while (is_sub_queue(original_queue,
-						    current_queue)) {
-					current_queue.pop();
-				}
-				while (!current_queue.empty()) {
-					new_queue.push(current_queue.front());
-					current_queue.pop();
-				}
-			}
-		} else {
-			if (!isCurrentSub) {
-				//If all elements of current aren't elements from original queue
-				//And some elements of main are elements from original queue
-				//res: main(without original elements) + current
-				while (isMainSub) {
-					main_queue.pop();
-
-					isMainSub = is_sub_queue(original_queue,
-								 main_queue);
-				}
-				while (!current_queue.empty()) {
-					new_queue.push(current_queue.front());
-					current_queue.pop();
-				}
-			} else {
-				//If some elements of main and current are elements from original queue
-				size_t subMainLen = sub_queue_length(
-					original_queue, main_queue);
-				size_t subCurrentLen = sub_queue_length(
-					original_queue, current_queue);
-
-				while (subMainLen > subCurrentLen &&
-				       !main_queue.empty() &&
-				       !new_queue.empty()) {
-					main_queue.pop();
-					new_queue.pop();
-
-					subMainLen--;
-				}
-				while (subMainLen < subCurrentLen &&
-				       !current_queue.empty()) {
-					current_queue.pop();
-
-					subCurrentLen--;
-				}
-				while (isCurrentSub && !current_queue.empty()) {
-					current_queue.pop();
-
-					isCurrentSub = is_sub_queue(
-						original_queue, current_queue);
-				}
-				while (!current_queue.empty()) {
-					new_queue.push(current_queue.front());
-					current_queue.pop();
-				}
-			}
+		while (main_sub_size > current_sub_size && !new_queue.empty()) {
+			new_queue.pop();
+			--main_sub_size;
+		}
+		while (main_sub_size < current_sub_size &&
+			       !current_queue.empty() ||
+		       current_sub_size > 0) {
+			current_queue.pop();
+			--current_sub_size;
+		}
+		while (!current_queue.empty()) {
+			new_queue.push(current_queue.front());
+			current_queue.pop();
 		}
 	}
-}
-
-template <class T>
-bool VQueue<T>::is_sub_queue(const std::queue<T> &original_queue,
-			     const std::queue<T> &check_queue)
-{
-	std::queue<T> original_queue_copy = original_queue;
-	std::queue<T> check_queue_copy = check_queue;
-
-	while (original_queue_copy.front() != check_queue_copy.front() &&
-	       !original_queue_copy.empty()) {
-		original_queue_copy.pop();
-	}
-	if (original_queue_copy.empty()) {
-		return false;
-	}
-	while (!original_queue_copy.empty() && !check_queue_copy.empty()) {
-		if (original_queue_copy.front() == check_queue_copy.front()) {
-			original_queue_copy.pop();
-			check_queue_copy.pop();
-		} else {
-			return false;
-		}
-	}
-	return true;
 }
 
 template <class T>
@@ -194,10 +124,21 @@ size_t VQueue<T>::sub_queue_length(const std::queue<T> &original_queue,
 	std::queue<T> original_queue_copy = original_queue;
 	std::queue<T> check_queue_copy = check_queue;
 
-	while (is_sub_queue(original_queue_copy, check_queue_copy)) {
+	while (original_queue_copy.front() != check_queue_copy.front() &&
+	       !original_queue_copy.empty()) {
 		original_queue_copy.pop();
-		check_queue_copy.pop();
-		sub_size++;
+	}
+	if (original_queue_copy.empty()) {
+		return 0;
+	}
+	while (!original_queue_copy.empty() && !check_queue_copy.empty()) {
+		if (original_queue_copy.front() == check_queue_copy.front()) {
+			original_queue_copy.pop();
+			check_queue_copy.pop();
+			++sub_size;
+		} else {
+			return 0;
+		}
 	}
 
 	return sub_size;
