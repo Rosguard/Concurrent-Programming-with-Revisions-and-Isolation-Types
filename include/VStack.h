@@ -14,10 +14,20 @@ template <class T> class VStack : public VDataStructure<std::stack<T> > {
 	using VDataStructure<std::stack<T> >::get_parent_data;
 	using VDataStructure<std::stack<T> >::_dummy;
 	using VDataStructure<std::stack<T> >::get_guarantee;
+	using VDataStructure<std::stack<T> >::_merge_strategy;
+	using VDataStructure<std::stack<T> >::call_strategy;
 
 	static std::stack<T> reverse(std::stack<T> orig);
 
     public:
+	VStack() = default;
+	explicit VStack(const std::function<std::stack<T>(
+				const std::stack<T> &, const std::stack<T> &,
+				const std::stack<T> &)> &f)
+		: VDataStructure<std::stack<T> >(f)
+	{
+	}
+
 	// TODO: constructors, destructors, operator=, emplace, https://en.cppreference.com/w/cpp/container/stack
 
 	// TODO: push with &&
@@ -87,51 +97,59 @@ void VStack<T>::merge(const Revision *main,
 	if (get_last_modified_segment(joinRev) == join) {
 		DEBUG_ONLY("Merge VStacks.");
 
-		std::stack<T> original_stack(reverse(
-			get_parent_data(joinRev.get()).value_or(_dummy)));
-		std::stack<T> main_stack(reverse(get(main).value_or(_dummy)));
-		std::stack<T> current_stack(
-			reverse(get(join).value_or(_dummy)));
-
 		std::stack<T> &new_stack = get_guarantee(main);
 
-		// clear current version
-		std::stack<T> empty;
-		new_stack.swap(empty);
+		if (!_merge_strategy) {
+			std::stack<T> original_stack(
+				reverse(get_parent_data(joinRev.get())
+						.value_or(_dummy)));
+			std::stack<T> main_stack(
+				reverse(get(main).value_or(_dummy)));
+			std::stack<T> current_stack(
+				reverse(get(join).value_or(_dummy)));
 
-		// calculate 3'
-		while (!main_stack.empty() && !current_stack.empty() &&
-		       !original_stack.empty() &&
-		       main_stack.top() == current_stack.top() &&
-		       current_stack.top() == original_stack.top()) {
-			new_stack.push(current_stack.top());
+			// clear current version
+			std::stack<T> empty;
+			new_stack.swap(empty);
 
-			main_stack.pop();
-			current_stack.pop();
-			original_stack.pop();
-		}
+			// calculate 3'
+			while (!main_stack.empty() && !current_stack.empty() &&
+			       !original_stack.empty() &&
+			       main_stack.top() == current_stack.top() &&
+			       current_stack.top() == original_stack.top()) {
+				new_stack.push(current_stack.top());
 
-		std::stack<T> original_stack_copy = original_stack;
-		// calculate 4'
-		while (!main_stack.empty() && !original_stack.empty() &&
-		       main_stack.top() == original_stack.top()) {
-			main_stack.pop();
-			original_stack.pop();
-		}
-		// calculate 5'
-		while (!current_stack.empty() && !original_stack_copy.empty() &&
-		       current_stack.top() == original_stack_copy.top()) {
-			current_stack.pop();
-			original_stack_copy.pop();
-		}
-		// gather stacks
-		while (!main_stack.empty()) {
-			new_stack.push(main_stack.top());
-			main_stack.pop();
-		}
-		while (!current_stack.empty()) {
-			new_stack.push(current_stack.top());
-			current_stack.pop();
+				main_stack.pop();
+				current_stack.pop();
+				original_stack.pop();
+			}
+
+			std::stack<T> original_stack_copy = original_stack;
+			// calculate 4'
+			while (!main_stack.empty() && !original_stack.empty() &&
+			       main_stack.top() == original_stack.top()) {
+				main_stack.pop();
+				original_stack.pop();
+			}
+			// calculate 5'
+			while (!current_stack.empty() &&
+			       !original_stack_copy.empty() &&
+			       current_stack.top() ==
+				       original_stack_copy.top()) {
+				current_stack.pop();
+				original_stack_copy.pop();
+			}
+			// gather stacks
+			while (!main_stack.empty()) {
+				new_stack.push(main_stack.top());
+				main_stack.pop();
+			}
+			while (!current_stack.empty()) {
+				new_stack.push(current_stack.top());
+				current_stack.pop();
+			}
+		} else {
+			new_stack = call_strategy(main, joinRev, join);
 		}
 	}
 }

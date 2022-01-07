@@ -204,3 +204,110 @@ TEST(VSetTest, multithread)
 		      });
 	ASSERT_TRUE(set.empty());
 }
+
+TEST(VSetTest, multithread_user_strategy)
+{
+	VSet<int> set([](const std::set<int> &was, const std::set<int> &main,
+			 const std::set<int> &current) {
+		std::set<int> intersection;
+
+		std::set_intersection(main.begin(), main.end(), current.begin(),
+				      current.end(),
+				      std::inserter(intersection,
+						    intersection.begin()));
+
+		return intersection;
+	});
+
+	VSet<int> set2;
+
+	for (int i = 0; i < 10; i++) {
+		set.insert(i);
+		set2.insert(i);
+	}
+	ASSERT_EQ(set.size(), 10);
+	ASSERT_EQ(set2.size(), 10);
+
+	for (int i = 5; i < 10; i++) {
+		set2.erase(i);
+	}
+
+	ASSERT_EQ(set2.size(), 5);
+
+	volatile bool synchro = false;
+
+	// 1st thread
+	const auto r1 =
+		Revision::thread_revision()->fork([&set, &set2, &synchro]() {
+			while (!synchro) {
+			} // wait until 2nd thread set var
+
+			ASSERT_EQ(set.size(), 10);
+			ASSERT_EQ(set2.size(), 5);
+
+			set.swap(set2);
+
+			ASSERT_EQ(set.size(), 5);
+			ASSERT_EQ(set2.size(), 10);
+
+			for (int i = 0; i < 5; i++) {
+				set.insert(i * 3); // 12 9 6 4 3 2 1 0
+			}
+			ASSERT_EQ(set.size(), 8);
+		});
+
+	// 2nd thread
+	const auto r2 = Revision::thread_revision()->fork([&set]() {
+		ASSERT_EQ(set.size(), 10);
+
+		for (int i = 0; i < 3; i++) {
+			ASSERT_NE(set.find(10 - i - 1), set.end());
+			set.erase(10 - i - 1);
+		}
+		ASSERT_EQ(set.size(), 7);
+
+		for (int i = 0; i < 7; i++) {
+			set.insert(i *
+				   10); // top:60 50 40 30 20 10 6 5 4 3 2 1 0
+		}
+		ASSERT_EQ(set.size(), 13);
+	});
+
+	ASSERT_EQ(set.size(), 10);
+
+	for (int i = 0; i < 8; i++) {
+		ASSERT_NE(set.find(10 - i - 1), set.end());
+		set.erase(10 - i - 1);
+	}
+	ASSERT_EQ(set.size(), 2);
+
+	/*
+	 * 1. r2:	        60 50 40 30 20 10 6 5 4 3 2 1 0
+	 * 2. main:		      		      	    1 0
+	 * 3. original set:   	            9 8 7 6 5 4 3 2 1 0
+	 * 4. res:      		  		    1 0
+	*/
+
+	// let first thread stop later
+	Revision::thread_revision()->join(r2);
+	ASSERT_EQ(set.size(), 2);
+
+	/*
+	 * 1. r1:			         12 9 6 4 3 2 1 0
+	 * 2. main:		            		      1 0
+	 * 3. original stack:   	      9 8 7 6 5 4 3 2 1 0
+	 * 3. res:                       		      1 0
+	 */
+
+	synchro = true;
+	Revision::thread_revision()->join(r1);
+	ASSERT_EQ(set.size(), 2);
+
+	std::vector<int> good_answer = { 1, 0 };
+	std::for_each(good_answer.begin(), good_answer.end(),
+		      [&set](const int &n) {
+			      ASSERT_NE(set.find(n), set.end());
+			      set.erase(n);
+		      });
+	ASSERT_TRUE(set.empty());
+}

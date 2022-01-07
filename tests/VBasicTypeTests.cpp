@@ -116,3 +116,41 @@ TEST(VBasicTypeTest, nested_threads)
 	Revision::thread_revision()->join(r2);
 	ASSERT_EQ(var.get(), 3);
 }
+
+TEST(VBasicTypeTest, multithread_user_strategy)
+{
+	VBasicType<int> var([](const int &was, const int &main,
+			       const int &current) { return main + current; });
+
+	var.set(1);
+	volatile bool synchro = false;
+
+	// 1st thread
+	const auto r1 = Revision::thread_revision()->fork([&var, &synchro]() {
+		while (!synchro) {
+		} // wait until 2nd thread set var
+
+		ASSERT_EQ(var.get(), 1);
+
+		var.set(2);
+		ASSERT_EQ(var.get(), 2);
+	});
+
+	// 2nd thread
+	const auto r2 = Revision::thread_revision()->fork([&var]() {
+		ASSERT_EQ(var.get(), 1);
+
+		var.set(3);
+		ASSERT_EQ(var.get(), 3);
+	});
+
+	ASSERT_EQ(var.get(), 1);
+
+	// let first thread stop later
+	Revision::thread_revision()->join(r2);
+	ASSERT_EQ(var.get(), 4);
+
+	synchro = true;
+	Revision::thread_revision()->join(r1);
+	ASSERT_EQ(var.get(), 6);
+}

@@ -7,8 +7,20 @@ template <class T> class VBasicType : public VDataStructure<T> {
 	using VDataStructure<T>::set;
 	using VDataStructure<T>::get_last_modified_segment;
 	using VDataStructure<T>::_versions;
+	using VDataStructure<T>::_merge_strategy;
+	using VDataStructure<T>::_dummy;
+	using VDataStructure<T>::get_parent_data;
+	using VDataStructure<T>::get;
+	using VDataStructure<T>::call_strategy;
 
     public:
+	VBasicType() = default;
+	explicit VBasicType(
+		const std::function<T(const T &, const T &, const T &)> &f)
+		: VDataStructure<T>(f)
+	{
+	}
+
 	void set(const T &value);
 	T &get();
 
@@ -34,6 +46,10 @@ void VBasicType<T>::merge(const Revision *main,
 {
 	if (get_last_modified_segment(joinRev) == join) {
 		DEBUG_ONLY("Merge VBasicTypes.");
-		set(main, _versions[join->version()].value());
+		if (!_merge_strategy) {
+			set(main, _versions[join->version()].value());
+		} else {
+			set(main, call_strategy(main, joinRev, join));
+		}
 	}
 }

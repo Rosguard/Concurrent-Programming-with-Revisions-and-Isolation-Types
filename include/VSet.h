@@ -8,6 +8,15 @@
 // Note that there is no const member functions!
 template <class T> class VSet : VDataStructure<std::set<T> > {
     protected:
+	using VDataStructure<std::set<T> >::update_revision;
+	using VDataStructure<std::set<T> >::get_guarantee;
+	using VDataStructure<std::set<T> >::get;
+	using VDataStructure<std::set<T> >::get_last_modified_segment;
+	using VDataStructure<std::set<T> >::get_parent_data;
+	using VDataStructure<std::set<T> >::_dummy;
+	using VDataStructure<std::set<T> >::_merge_strategy;
+	using VDataStructure<std::set<T> >::call_strategy;
+
 	static std::set<T> intersect(const std::set<T> &s1,
 				     const std::set<T> &s2);
 
@@ -19,12 +28,13 @@ template <class T> class VSet : VDataStructure<std::set<T> > {
 	static typename std::set<T>::size_type _default_max_size;
 
     public:
-	using VDataStructure<std::set<T> >::update_revision;
-	using VDataStructure<std::set<T> >::get_guarantee;
-	using VDataStructure<std::set<T> >::get;
-	using VDataStructure<std::set<T> >::get_last_modified_segment;
-	using VDataStructure<std::set<T> >::get_parent_data;
-	using VDataStructure<std::set<T> >::_dummy;
+	VSet() = default;
+	explicit VSet(const std::function<std::set<T>(const std::set<T> &,
+						      const std::set<T> &,
+						      const std::set<T> &)> &f)
+		: VDataStructure<std::set<T> >(f)
+	{
+	}
 
 	typename std::set<T>::iterator begin();
 	typename std::set<T>::iterator end();
@@ -181,26 +191,33 @@ void VSet<T>::merge(const Revision *main,
 	if (get_last_modified_segment(joinRev) == join) {
 		DEBUG_ONLY("Merge VSets.");
 
-		std::set<T> original_set =
-			get_parent_data(joinRev.get()).value_or(_dummy);
-		std::set<T> main_set = get(main).value_or(_dummy);
-		std::set<T> current_set = get(join).value_or(_dummy);
-
 		std::set<T> &new_stack = get_guarantee(main);
 
-		// 3'
-		new_stack = intersect(intersect(main_set, original_set),
-				      intersect(current_set, original_set));
-		// 4'
-		auto difference_set =
-			std::move(difference(main_set, original_set));
+		if (!_merge_strategy) {
+			std::set<T> original_set =
+				get_parent_data(joinRev.get()).value_or(_dummy);
+			std::set<T> main_set = get(main).value_or(_dummy);
+			std::set<T> current_set = get(join).value_or(_dummy);
 
-		new_stack.insert(difference_set.begin(), difference_set.end());
+			// 3'
+			new_stack =
+				intersect(intersect(main_set, original_set),
+					  intersect(current_set, original_set));
+			// 4'
+			auto difference_set =
+				std::move(difference(main_set, original_set));
 
-		// 5'
-		difference_set =
-			std::move(difference(current_set, original_set));
-		new_stack.insert(difference_set.begin(), difference_set.end());
+			new_stack.insert(difference_set.begin(),
+					 difference_set.end());
+
+			// 5'
+			difference_set = std::move(
+				difference(current_set, original_set));
+			new_stack.insert(difference_set.begin(),
+					 difference_set.end());
+		} else {
+			new_stack = call_strategy(main, joinRev, join);
+		}
 	}
 }
 

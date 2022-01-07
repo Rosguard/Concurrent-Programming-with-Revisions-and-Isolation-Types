@@ -5,9 +5,15 @@
 #include "revision/Revision.h"
 #include <unordered_map>
 #include <optional>
+#include <functional>
 
 template <class T> class VDataStructure : public Versioned {
     protected:
+	// user-defined merge strategy stuff
+	std::function<T(const T &, const T &, const T &)> _merge_strategy;
+	T call_strategy(const Revision *, const std::shared_ptr<Revision> &,
+			const std::shared_ptr<Segment> &);
+
 	static const T _dummy; // requires default constructor
 	std::unordered_map<int, std::optional<T> > _versions;
 
@@ -30,6 +36,14 @@ template <class T> class VDataStructure : public Versioned {
 	virtual T &get();
 
     public:
+	explicit VDataStructure(
+		const std::function<T(const T &, const T &, const T &)> &f)
+		: _merge_strategy(f)
+	{
+	}
+
+	VDataStructure() = default;
+
 	void release(const Segment *release) override;
 
 	void collapse(const Revision *main,
@@ -148,4 +162,16 @@ std::optional<T> &VDataStructure<T>::get(const std::shared_ptr<Segment> &seg)
 	}
 
 	return _versions[s->version()];
+}
+
+template <class T>
+T VDataStructure<T>::call_strategy(const Revision *main,
+				   const std::shared_ptr<Revision> &joinRev,
+				   const std::shared_ptr<Segment> &join)
+{
+	T original_value = get_parent_data(joinRev.get()).value_or(_dummy);
+	T main_value = get(main).value_or(_dummy);
+	T current_value = get(join).value_or(_dummy);
+
+	return _merge_strategy(original_value, main_value, current_value);
 }
