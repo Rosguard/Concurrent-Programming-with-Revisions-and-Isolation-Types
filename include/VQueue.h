@@ -14,11 +14,21 @@ template <class T> class VQueue : public VDataStructure<std::queue<T> > {
 	using VDataStructure<std::queue<T> >::get_parent_data;
 	using VDataStructure<std::queue<T> >::_dummy;
 	using VDataStructure<std::queue<T> >::get_guarantee;
+	using VDataStructure<std::queue<T> >::_merge_strategy;
+	using VDataStructure<std::queue<T> >::call_strategy;
 
 	static size_t sub_queue_length(const std::queue<T> &original_queue,
 				       const std::queue<T> &check_queue);
 
     public:
+	VQueue() = default;
+	explicit VQueue(const std::function<std::queue<T>(
+				const std::queue<T> &, const std::queue<T> &,
+				const std::queue<T> &)> &f)
+		: VDataStructure<std::queue<T> >(f)
+	{
+	}
+
 	// TODO: constructors, destructors, operator=, emplace (https://en.cppreference.com/w/cpp/container/queue)
 
 	// TODO: push with &&
@@ -88,30 +98,36 @@ void VQueue<T>::merge(const Revision *main,
 	if (this->get_last_modified_segment(joinRev) == join) {
 		DEBUG_ONLY("Merge VQueue.");
 
-		std::queue<T> original_queue =
-			get_parent_data(joinRev.get()).value_or(_dummy);
-		std::queue<T> current_queue = get(join).value_or(_dummy);
-
 		std::queue<T> &new_queue = get_guarantee(main);
 
-		size_t current_sub_size =
-			sub_queue_length(original_queue, current_queue);
-		size_t main_sub_size =
-			sub_queue_length(original_queue, new_queue);
+		if (!_merge_strategy) {
+			std::queue<T> original_queue =
+				get_parent_data(joinRev.get()).value_or(_dummy);
+			std::queue<T> current_queue =
+				get(join).value_or(_dummy);
 
-		while (main_sub_size > current_sub_size && !new_queue.empty()) {
-			new_queue.pop();
-			--main_sub_size;
-		}
-		while (main_sub_size < current_sub_size &&
-			       !current_queue.empty() ||
-		       current_sub_size > 0) {
-			current_queue.pop();
-			--current_sub_size;
-		}
-		while (!current_queue.empty()) {
-			new_queue.push(current_queue.front());
-			current_queue.pop();
+			size_t current_sub_size =
+				sub_queue_length(original_queue, current_queue);
+			size_t main_sub_size =
+				sub_queue_length(original_queue, new_queue);
+
+			while (main_sub_size > current_sub_size &&
+			       !new_queue.empty()) {
+				new_queue.pop();
+				--main_sub_size;
+			}
+			while (main_sub_size < current_sub_size &&
+				       !current_queue.empty() ||
+			       current_sub_size > 0) {
+				current_queue.pop();
+				--current_sub_size;
+			}
+			while (!current_queue.empty()) {
+				new_queue.push(current_queue.front());
+				current_queue.pop();
+			}
+		} else {
+			new_queue = call_strategy(main, joinRev, join);
 		}
 	}
 }

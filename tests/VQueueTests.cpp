@@ -407,3 +407,90 @@ TEST(VQueueTest, long_segment_chain)
 	ASSERT_EQ(queue.front(), 1);
 	ASSERT_EQ(queue.size(), 1);
 }
+
+TEST(VQueueTest, multithread_user_stategy)
+{
+	VQueue<int> queue([](const std::queue<int> &was,
+			     const std::queue<int> &main,
+			     const std::queue<int> &current) { return main; });
+
+	for (int i = 0; i < 10; i++) {
+		queue.push(i); //front: 0 1 2 3 4 5 6 7 8 9
+	}
+	ASSERT_EQ(queue.size(), 10);
+
+	volatile bool synchro = false;
+
+	// 1st thread
+	const auto r1 = Revision::thread_revision()->fork([&queue, &synchro]() {
+		while (!synchro) {
+		} // wait until 2nd thread set var
+
+		ASSERT_EQ(queue.size(), 10);
+
+		for (int i = 0; i < 5; i++) {
+			ASSERT_EQ(queue.front(), i);
+			queue.pop(); //front: 5 6 7 8 9
+		}
+		ASSERT_EQ(queue.size(), 5);
+
+		for (int i = 0; i < 5; i++) {
+			queue.push(i * 3); //front: 5 6 7 8 9 0 3 6 9 12
+		}
+		ASSERT_EQ(queue.size(), 10);
+	});
+
+	// 2nd thread
+	const auto r2 = Revision::thread_revision()->fork([&queue]() {
+		ASSERT_EQ(queue.size(), 10);
+
+		for (int i = 0; i < 3; i++) {
+			ASSERT_EQ(queue.front(), i);
+			queue.pop(); //front: 3 4 5 6 7 8 9
+		}
+		ASSERT_EQ(queue.size(), 7);
+
+		for (int i = 0; i < 7; i++) {
+			queue.push(
+				i *
+				10); //front: 3 4 5 6 7 8 9 0 10 20 30 40 50 60
+		}
+		ASSERT_EQ(queue.size(), 14);
+	});
+
+	ASSERT_EQ(queue.size(), 10);
+
+	for (int i = 0; i < 8; i++) {
+		ASSERT_EQ(queue.front(), i);
+		queue.pop(); //front: 8 9
+	}
+	ASSERT_EQ(queue.size(), 2);
+
+	/*
+	 * 1. r2:		3 4 5 6 7 8 9 0 10 20 30 40 50 60
+	 * 2. main:		      		      	      8 9
+	 * 3. original queue:   	      0 1 2 3 4 5 6 7 8 9
+	 * 3. res:		          		      8 9
+	 */
+
+	// let first thread stop later
+	Revision::thread_revision()->join(r2);
+	ASSERT_EQ(queue.size(), 2);
+	/*
+	 * 1. r1:			     5 6 7 8 9 0 3 6 9 12
+	 * 2. main:		          		      8 9
+	 * 3. original queue:   	      0 1 2 3 4 5 6 7 8 9
+	 * 3. res:             				      8 9
+	 */
+
+	synchro = true;
+	Revision::thread_revision()->join(r1);
+	ASSERT_EQ(queue.size(), 2);
+
+	std::vector<int> good_answer = { 9, 8 };
+	while (queue.size()) {
+		ASSERT_EQ(queue.front(), good_answer.back());
+		queue.pop();
+		good_answer.pop_back();
+	}
+}
