@@ -292,3 +292,74 @@ TEST(VStackTest, multithread_user_strategy)
 		good_answer.pop_back();
 	}
 }
+
+TEST(VStackTest, big_test)
+{
+	int number_of_added = 30;
+	int threads_amount = 20;
+	int main_length = 50;
+
+	VStack<int> stack;
+	std::stack<int> result_stack;
+	std::vector<std::shared_ptr<Revision> > threads(threads_amount);
+
+	for (int i = 0; i < main_length; ++i) {
+		stack.push(i);
+	}
+
+	ASSERT_EQ(stack.size(), main_length);
+
+	for (auto &thread : threads) {
+		thread = Revision::thread_revision()->fork([&stack,
+							    &number_of_added,
+							    &main_length]() {
+			ASSERT_EQ(stack.size(), main_length);
+
+			std::this_thread::sleep_for(std::chrono::milliseconds(
+				(rand() % 5 + 1) * 1000));
+
+			for (int j = 0; j < number_of_added; j++) {
+				stack.push(j * 13);
+				std::this_thread::sleep_for(
+					std::chrono::milliseconds(
+						(rand() % 5 + 1) * 100));
+			}
+
+			std::this_thread::sleep_for(std::chrono::milliseconds(
+				(rand() % 5 + 1) * 100));
+
+			ASSERT_EQ(stack.size(), main_length + number_of_added);
+
+		});
+		std::this_thread::sleep_for(
+			std::chrono::milliseconds((rand() % 9 + 1) * 100));
+	}
+
+	for (const auto &thread : threads) {
+		Revision::thread_revision()->join(thread);
+	}
+
+	ASSERT_EQ(stack.size(), main_length + threads_amount * number_of_added);
+
+	for (int i = 0; i < main_length; ++i) {
+		result_stack.push(i);
+	}
+
+	ASSERT_EQ(result_stack.size(), main_length);
+
+	for (int i = 0; i < threads_amount; ++i) {
+		for (int j = 0; j < number_of_added; ++j) {
+			result_stack.push(j * 13);
+		}
+	}
+
+	ASSERT_EQ(stack.size(), result_stack.size());
+
+	while (!stack.empty()) {
+		ASSERT_EQ(stack.top(), result_stack.top());
+
+		stack.pop();
+		result_stack.pop();
+	}
+	ASSERT_TRUE(stack.empty());
+}
