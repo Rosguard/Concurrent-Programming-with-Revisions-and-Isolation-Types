@@ -563,4 +563,5 @@ TEST(VQueueTest, big_test)
 		queue.pop();
 		result_queue.pop();
 	}
+	ASSERT_TRUE(queue.empty());
 }

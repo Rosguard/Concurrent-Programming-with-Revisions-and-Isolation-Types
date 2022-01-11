@@ -311,3 +311,75 @@ TEST(VSetTest, multithread_user_strategy)
 		      });
 	ASSERT_TRUE(set.empty());
 }
+
+TEST(VSetTest, big_test)
+{
+	int number_of_added = 30;
+	int threads_amount = 20;
+	int main_length = 50;
+
+	VSet<int> set;
+	std::set<int> result_set;
+	std::vector<std::shared_ptr<Revision> > threads(threads_amount);
+	static std::atomic<int> total_repeated;
+
+	for (int i = 0; i < main_length; ++i) {
+		set.insert(i);
+	}
+
+	ASSERT_EQ(set.size(), main_length);
+
+	for (auto &thread : threads) {
+		thread = Revision::thread_revision()->fork([&set,
+							    &number_of_added,
+							    &main_length]() {
+			ASSERT_EQ(set.size(), main_length);
+
+			std::this_thread::sleep_for(std::chrono::milliseconds(
+				(rand() % 5 + 1) * 1000));
+
+			int rep = 0;
+			for (int j = 0; j < number_of_added; j++) {
+				set.find(j * 666) != set.end() ? ++rep : rep;
+				set.insert(j * 666);
+				std::this_thread::sleep_for(
+					std::chrono::milliseconds(
+						(rand() % 5 + 1) * 100));
+			}
+			total_repeated += rep;
+
+			std::this_thread::sleep_for(std::chrono::milliseconds(
+				(rand() % 5 + 1) * 100));
+			ASSERT_EQ(set.size(),
+				  main_length + number_of_added - rep);
+		});
+		std::this_thread::sleep_for(
+			std::chrono::milliseconds((rand() % 9 + 1) * 100));
+	}
+
+	for (const auto &thread : threads) {
+		Revision::thread_revision()->join(thread);
+	}
+
+	ASSERT_EQ(set.size(), main_length + number_of_added -
+				      (total_repeated / threads_amount));
+
+	for (int i = 0; i < main_length; ++i) {
+		result_set.insert(i);
+	}
+
+	ASSERT_EQ(result_set.size(), main_length);
+
+	for (int j = 0; j < number_of_added; ++j) {
+		result_set.insert(j * 666);
+	}
+
+	ASSERT_EQ(set.size(), result_set.size());
+
+	std::for_each(result_set.begin(), result_set.end(),
+		      [&set](const int &n) {
+			      ASSERT_NE(set.find(n), set.end());
+			      set.erase(n);
+		      });
+	ASSERT_TRUE(set.empty());
+}
